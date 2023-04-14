@@ -6,6 +6,7 @@
 //
 
 import SpriteKit
+import GameplayKit
 
 class GameScene: SKScene {
     
@@ -32,9 +33,10 @@ class GameScene: SKScene {
         let tapMethod = #selector(GameScene.handleTap(tapGesture:)) // обработка нажатия
         let tapGesture = UITapGestureRecognizer(target: self, action: tapMethod) // распознаватель жестов
         view.addGestureRecognizer(tapGesture)
+    //    view.isUserInteractionEnabled = true
     }
         
-        func resetSkater() { // начальное положение героя
+        func resetSkater() { // начальное положение героя (skater init position)
             let skaterX = frame.midX / 2.0
             let skaterY = skater.frame.height / 2.0 + 64.0
             skater.position = CGPoint(x: skaterX, y: skaterY)
@@ -42,21 +44,21 @@ class GameScene: SKScene {
             skater.minimumY = skaterY
         }
     
-    func spawnBrick (atPosition position: CGPoint) -> SKSpriteNode {
-        let brick = SKSpriteNode(imageNamed: "sidewalk") // создаем спрайт тротуара
+    func spawnBrick(atPosition position: CGPoint) -> SKSpriteNode {
+        let brick = SKSpriteNode(imageNamed: "sidewalk") // create brick sprite
         brick.position = position
         brick.zPosition = 8
-        addChild(brick)
+        addChild(brick) // add brick to scene
         brickSize = brick.size // обновляем размер brickSize
         bricks.append(brick) // добавляем новую тротуарную секцию к массиву
+        
         return brick
     }
     
-    func updateBricks(withScrollAmount currentScrollAmount: CGFloat) {
+    func updateBricks(withScrollAmount currentScrollAmount: CGFloat) { // вызывается перед отрисовкой каждого фрейма
         var farthestRightBrickX: CGFloat = 0.0
         
         for brick in bricks {
-            
             let newX = brick.position.x - currentScrollAmount
             
             if newX < -brickSize.width { // удаляем секцию, если она сместилась за пределы экрана
@@ -66,7 +68,7 @@ class GameScene: SKScene {
                     bricks.remove(at: brickIndex)
                 }
             } else {
-                brick.position = CGPoint(x: newX, y: brick.position.y) // обновляем положение секции
+                brick.position = CGPoint(x: newX, y: brick.position.y) // if brick is still on the screen: update his X
                 if brick.position.x > farthestRightBrickX { // обновляем положение самой правой секции
                     farthestRightBrickX = brick.position.x
                 }
@@ -84,11 +86,12 @@ class GameScene: SKScene {
             
             let newBrick = spawnBrick(atPosition: CGPoint(x: brickX, y: brickY))
             farthestRightBrickX = newBrick.position.x
+    //        updateSkater() // вызываем метод
         }
     }
     
-    func updateSkater() {
-        if skater.isOnGround {
+    func updateSkater() { // возвращение героя после прыжка
+        if !skater.isOnGround {
             let velocityY = skater.velocity.y - gravitySpeed
             skater.velocity = CGPoint(x: skater.velocity.x, y: velocityY)
             let newSkaterY: CGFloat = skater.position.y + skater.velocity.y
@@ -120,6 +123,7 @@ class GameScene: SKScene {
         if skater.isOnGround { // прыжок если герой на земле
             skater.velocity = CGPoint(x: 0.0, y: skater.jumpSpeed) // скорость героя
             skater.isOnGround = false // герой после прыжка уже не на земле
+            print("Tap Gesture recognized")
         }
     }
 }
