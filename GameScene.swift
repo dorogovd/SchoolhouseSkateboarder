@@ -19,6 +19,7 @@ class GameScene: SKScene, SKPhysicsContactDelegate {
     var bricks = [SKSpriteNode]() // массив со всеми секциями тротуара
     var brickSize = CGSize.zero // размер сеций тротуара
     var scrollSpeed: CGFloat = 5.0 // скорость движения тротуара
+    let startingScrollSpeed: CGFloat = 5.0 // начальная скорость героя
     var gravitySpeed: CGFloat = 1.5 // скорость гравитации
     var lastUpdateTime: TimeInterval? // время последнего вызова для метода обновления
     
@@ -36,13 +37,15 @@ class GameScene: SKScene, SKPhysicsContactDelegate {
         let yMid = frame.midY
         background.position = CGPoint(x: xMid, y: yMid)
         addChild(background) // addChild - дочерний спрайт , добавляем фон
-        skater.setupPhysicsBody()
-        resetSkater()
+        
+        skater.setupPhysicsBody() // настраиваем свойства героя
         addChild(skater) // добавляем героя
         
-        let tapMethod = #selector(GameScene.handleTap(tapGesture:)) // обработка нажатия
+        let tapMethod = #selector(GameScene.handleTap(tapGesture:)) // добавляем распознаватель нажатий
         let tapGesture = UITapGestureRecognizer(target: self, action: tapMethod) // распознаватель жестов
         view.addGestureRecognizer(tapGesture)
+        
+        startGame()
     //    view.isUserInteractionEnabled = true
     }
         
@@ -52,7 +55,26 @@ class GameScene: SKScene, SKPhysicsContactDelegate {
             skater.position = CGPoint(x: skaterX, y: skaterY)
             skater.zPosition = 10
             skater.minimumY = skaterY
+            
+            skater.zRotation = 0.0 // zRotation - как сильно объект вращается вправо и влево
+            skater.physicsBody?.velocity = CGVector(dx: 0.0, dy: 0.0) // свойство чтобы остановить героя после прыжка или падения
+            skater.physicsBody?.angularVelocity = 0.0 // angularVelocity - скорость вращения
         }
+    
+    func startGame() {
+        resetSkater() // герой в стартовом положении
+        scrollSpeed = startingScrollSpeed // scrollSpeed на начальной скорости
+        lastUpdateTime = nil
+        
+        for brick in bricks { // удаляем все спрайты brick из сцены (из массива bricks)
+            brick.removeFromParent()
+        }
+        bricks.removeAll(keepingCapacity: true)
+    }
+    
+    func gameOver() {
+        startGame()
+    }
     
     func spawnBrick(atPosition position: CGPoint) -> SKSpriteNode {
         let brick = SKSpriteNode(imageNamed: "sidewalk") // create brick sprite
@@ -107,17 +129,30 @@ class GameScene: SKScene, SKPhysicsContactDelegate {
     }
     
     func updateSkater() { // возвращение героя после прыжка
-        if !skater.isOnGround {
-            let velocityY = skater.velocity.y - gravitySpeed
-            skater.velocity = CGPoint(x: skater.velocity.x, y: velocityY)
-            let newSkaterY: CGFloat = skater.position.y + skater.velocity.y
-            skater.position = CGPoint(x: skater.position.x, y: newSkaterY)
-            
-            if skater.position.y < skater.minimumY {
-                skater.position.y = skater.minimumY
-                skater.velocity = CGPoint.zero
-                skater.isOnGround = true
+//        if !skater.isOnGround {
+//            let velocityY = skater.velocity.y - gravitySpeed
+//            skater.velocity = CGPoint(x: skater.velocity.x, y: velocityY)
+//            let newSkaterY: CGFloat = skater.position.y + skater.velocity.y
+//            skater.position = CGPoint(x: skater.position.x, y: newSkaterY)
+//
+//            if skater.position.y < skater.minimumY {
+//                skater.position.y = skater.minimumY
+//                skater.velocity = CGPoint.zero
+//                skater.isOnGround = true
+//            }
+//        }
+        if let velocityY = skater.physicsBody?.velocity.dy { // распаковываем скорость чтобы потом использовать
+            if velocityY < -100.0 || velocityY > 100.0 { // определяем находится ли герой на земле
+                skater.isOnGround = false // если скорость отрицательная по Y то герой не на земле (падает)
             }
+        }
+        // добавляем Bool переменные определяющие условия для завершения игры
+        let isOffScreen = skater.position.y < 0.0 || skater.position.x < 0.0 // герой за пределами экрана
+        let maxRotation = CGFloat(GLKMathDegreesToRadians(85.0)) // переводим радианы в градусы (определяем угол наклона героя)
+        let isTippedOver = skater.zRotation > maxRotation || skater.zRotation < -maxRotation // герой опрокинулся
+        
+        if isOffScreen || isTippedOver {
+            gameOver() // если хоть одно условие будет true то игра завершится
         }
     }
     
@@ -137,9 +172,9 @@ class GameScene: SKScene, SKPhysicsContactDelegate {
     
     @objc func handleTap(tapGesture: UITapGestureRecognizer) {
         if skater.isOnGround { // прыжок если герой на земле
-            skater.velocity = CGPoint(x: 0.0, y: skater.jumpSpeed) // скорость героя
-            skater.isOnGround = false // герой после прыжка уже не на земле
-            print("Tap Gesture recognized")
+//            skater.velocity = CGPoint(x: 0.0, y: skater.jumpSpeed) // скорость героя
+//            skater.isOnGround = false // герой после прыжка уже не на земле
+            skater.physicsBody?.applyImpulse(CGVector(dx: 0.0, dy: 260.0))
         }
     }
     
