@@ -8,7 +8,13 @@
 import SpriteKit
 import GameplayKit
 
-class GameScene: SKScene {
+struct PhysicsCategory { // физические категории для определения возможности сталкивания и контактирования объектов
+    static let skater: UInt32 = 0x1 << 0 // UInt32 - беззнаковый тип для физических категорий
+    static let brick: UInt32 = 0x1 << 1
+    static let gem: UInt32 = 0x1 << 2
+}
+
+class GameScene: SKScene, SKPhysicsContactDelegate {
     
     var bricks = [SKSpriteNode]() // массив со всеми секциями тротуара
     var brickSize = CGSize.zero // размер сеций тротуара
@@ -20,6 +26,9 @@ class GameScene: SKScene {
     
     override func didMove(to view: SKView) { // вызывается при запуске (только 1 раз)
         
+        physicsWorld.gravity = CGVector(dx: 0.0, dy: -6.0)
+        physicsWorld.contactDelegate = self
+        
         anchorPoint = CGPoint.zero
         
         let background = SKSpriteNode(imageNamed: "background.png") // создаем фоновый спрайт background
@@ -27,6 +36,7 @@ class GameScene: SKScene {
         let yMid = frame.midY
         background.position = CGPoint(x: xMid, y: yMid)
         addChild(background) // addChild - дочерний спрайт , добавляем фон
+        skater.setupPhysicsBody()
         resetSkater()
         addChild(skater) // добавляем героя
         
@@ -51,6 +61,12 @@ class GameScene: SKScene {
         addChild(brick) // add brick to scene
         brickSize = brick.size // обновляем размер brickSize
         bricks.append(brick) // добавляем новую тротуарную секцию к массиву
+        
+        let center = brick.centerRect.origin // настройка физического тела секции (центральная точка объекта "brick")
+        brick.physicsBody = SKPhysicsBody(rectangleOf: brick.size, center: center) // создание физ тела и присоединение к спрайту "brick"
+        brick.physicsBody?.affectedByGravity = false // убираем влияние гравитации на тело "brick"
+        brick.physicsBody?.categoryBitMask = PhysicsCategory.brick
+        brick.physicsBody?.collisionBitMask = 0 // значение сталкивания 0 чтобы секции brick не сталкивались с другими телами
         
         return brick
     }
@@ -124,6 +140,13 @@ class GameScene: SKScene {
             skater.velocity = CGPoint(x: 0.0, y: skater.jumpSpeed) // скорость героя
             skater.isOnGround = false // герой после прыжка уже не на земле
             print("Tap Gesture recognized")
+        }
+    }
+    
+    // MARK: - SKPhysicsContactDelegate Methods
+    func didBegin(_ contact: SKPhysicsContact) { // проверяем есть ли контакт между героем и brick
+        if contact.bodyA.categoryBitMask == PhysicsCategory.skater && contact.bodyB.categoryBitMask == PhysicsCategory.brick {
+            skater.isOnGround = true
         }
     }
 }
